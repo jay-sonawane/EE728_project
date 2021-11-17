@@ -1,0 +1,270 @@
+# 3D sample: (truncated) pyramid InAs quantum dot
+
+#Begin NextnanoWizard parameter section
+$W = 30 
+$WTOP = 350
+$XY_msh =3
+$XY_SK_QD_msh = 2
+$Z_msh = 3
+$WL_msh = 0.5
+$SK_QD_msh = 0.5
+$Z_msh_final = 10
+
+$ALLOY = 0.15
+
+$NUME = 6      # number of electron states
+$NUMH = 6      # number of hole states
+#End NextnanoWizard parameter section
+
+
+global{ 
+   simulate3D{}
+   temperature  = 19
+   substrate{ name = "GaAs" }
+periodic{ x = yes y = yes z=no}
+   crystal_zb{ x_hkl = [1, 0, 0] y_hkl = [0, 1, 0] } # defines orientation of simulation domain (growth direction: z = [001])
+}<>
+
+
+output{
+   format3D = AvsAscii                               # no Origin format available (default: AvsBinary)
+   section2D{ name = "side"  y = 0 }          # 2D cross section along xz plane (at dot center)
+   section1D{ name = "z" x = 0 y = 0 } # 1D cross section along growth direction (at dot center)   
+}<>
+
+
+grid{
+    xgrid{
+      line{ pos = -$W       spacing = $XY_msh}
+      line{ pos = -8            spacing = $XY_SK_QD_msh}
+      line{ pos = 8           spacing = $XY_SK_QD_msh}
+      line{ pos = $W          spacing = $XY_msh}
+   }
+
+   ygrid{
+      line{ pos = -$W       spacing = $XY_msh}
+      line{ pos = -8            spacing = $XY_SK_QD_msh}
+      line{ pos = 8           spacing = $XY_SK_QD_msh}
+      line{ pos = $W          spacing = $XY_msh}
+   }
+
+   zgrid{
+      line{ pos = -10       spacing = $Z_msh}
+      line{ pos = 0         spacing = $WL_msh}
+      line{ pos = 6         spacing = $WL_msh}
+      line{ pos = 33        spacing = $Z_msh}
+      line{ pos = 50        spacing = $Z_msh_final}
+      line{ pos = 300       spacing = $SK_QD_msh}
+      line{ pos = 315       spacing = $SK_QD_msh}
+      line{ pos = $WTOP     spacing = $Z_msh_final}
+
+   }
+
+
+}<>
+
+
+
+structure{
+      output_material_index{}
+
+   # GaAs substrate
+   region{
+      everywhere{}
+      binary{ name = "GaAs"}
+      contact{ name = "dummy" }
+   }
+
+# In capping layer
+   region{
+      cuboid{ x = [-$W, $W] y = [-$W, $W] z = [0.5, 6] }
+      ternary_constant{ name = "In(x)Ga(1-x)As"
+      alloy_x = 0.15}
+   }
+   # First InAs (truncated) Pyramid with {011} side facets
+   region{
+         ternary_constant{
+         name    = "InAs(x)Sb(1-x)"  # ternary material name for this region with constant alloy profile
+         alloy_x = 0.86              # x content of the alloy (minimum value is 0.0, maximum value is 1.0)
+         }
+
+      obelisk{
+         base_x = [-15, 15]
+         base_y = [-15, 15]
+         base_z = [0.5 , 0.5]
+         top_x = [0, 0] # truncate to obtain {011} side facets
+         top_y = [0, 0] # truncate to obtain {011} side facets
+         top_z = [5.5, 5.5]
+      }
+   }
+   region{
+      cuboid{ x = [-$W, $W] y = [-$W, $W] z = [6, 306] }
+      binary{ name = "GaAs" }              
+         }
+   region{
+      cuboid{ x = [-$W, $W] y = [-$W, $W] z = [306, 308] }
+         ternary_constant{
+         name    = "InAs(x)Sb(1-x)"  # ternary material name for this region with constant alloy profile
+         alloy_x = 0.86            # x content of the alloy (minimum value is 0.0, maximum value is 1.0)
+            }
+         }
+
+region{   
+binary{
+    name    = Air
+}
+      cuboid{ x = [-$W, $W] y = [-$W, $W] z = [308, 350] }
+}
+   # First InAs (truncated) Pyramid with {011} side facets
+   region{   
+            ternary_constant{
+         name    = "InAs(x)Sb(1-x)"  # ternary material name for this region with constant alloy profile
+         alloy_x = 0.86              # x content of the alloy (minimum value is 0.0, maximum value is 1.0)
+    }
+      obelisk{
+         base_x = [-10, 10]
+         base_y = [-10, 10]
+         base_z = [306 , 306]
+         top_x = [0, 0] # truncate to obtain {011} side facets
+         top_y = [0, 0] # truncate to obtain {011} side facets
+         top_z = [311, 311]
+      }   
+}
+
+}
+<>
+
+
+classical{
+   Gamma{}
+   LH{}
+   HH{}
+   SO{}
+
+   output_bandedges{}
+}<>
+
+
+quantum{
+   region{ 
+      name = "BuriedQD"
+      x = [-16, 16]
+      y = [-16, 16]
+      z = [-3, 12]
+      boundary{ x = dirichlet y = dirichlet z = dirichlet }
+kp_8band{ 
+        num_electrons=6 num_holes=6
+        #lapack {}
+       arpack_inv {}
+#        kp_parameters{
+#           rescale_S_to = 1.0  # in order to avoid spurious solution
+#        }
+      spurious_handling = [ 0.0, 1.0, -1.0, 1.0, 0.0, 1.0 ] # to be consistent with older versions of nextnano++
+
+      linear_solver{
+                  iterations = 10000
+                  }
+
+      }  
+
+      output_wavefunctions{  amplitudes = no  probabilities = yes  max_num = $NUME+$NUMH }
+   
+
+   }
+   region{ 
+      name = "SQD"
+      x = [-16, 16]
+      y = [-16, 16]
+      z = [305, 315]
+      boundary{ x = dirichlet y = dirichlet z = dirichlet }
+kp_8band{ 
+        num_electrons=6 num_holes=6
+        #lapack {}
+       arpack_inv {}
+#        kp_parameters{
+#           rescale_S_to = 1.0  # in order to avoid spurious solution
+#        }
+      spurious_handling = [ 0.0, 1.0, -1.0, 1.0, 0.0, 1.0 ] # to be consistent with older versions of nextnano++
+
+      linear_solver{
+                  iterations = 10000
+                  }
+
+      }  
+
+      output_wavefunctions{  amplitudes = no  probabilities = yes  max_num = $NUME+$NUMH }
+   
+
+   }
+
+
+#if $ELEC1 Gamma{ num_ev = $NUME } 
+#if $HOLE1 HH{ num_ev = $NUMH }
+#if $KP6   kp_6band{ num_ev = $NUMH }
+#if $KP8   kp_8band{ num_electrons = $NUME num_holes = $NUMH }
+}<>
+
+database{
+   ternary_zb {
+      name       = "GaAs(1-x)Sb(x)"
+      valence_bands{
+         bandoffset = -1.4
+                   }
+              } 
+}
+
+poisson{
+   output_potential{}
+}<>
+
+
+contacts{
+   fermi{ name = "dummy" bias = 0.0 } # only needed to define reference energy
+}<>
+
+
+strain{
+   minimized_strain{}
+   growth_direction = [0,0,1]
+
+   output_strain_tensor{}
+   output_polarization_charges{}
+}<>
+
+optics{
+region {
+name = "BuriedQD"
+interband = yes
+intraband = yes
+polarization{
+name = "x"
+re = [1,0,0]
+}
+output_transitions = yes
+output_components = yes
+energy_min = 0.4
+energy_max = 1.2
+}
+region {
+name = "SQD"
+interband = yes
+intraband = yes
+polarization{
+name = "x"
+re = [1,0,0]
+}
+output_transitions = yes
+output_components = yes
+energy_min = 0.4
+energy_max = 1.2
+}
+
+}
+
+
+run{
+   solve_strain{}
+   solve_poisson{}
+   solve_quantum{}
+   calculate_optics{}
+}<>
